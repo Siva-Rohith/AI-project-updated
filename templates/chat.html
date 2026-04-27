@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suraksha AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="chat-body">
+    <div class="chat-app">
+        <aside class="sidebar">
+            <a class="brand sidebar-brand" href="/">
+                <span class="brand-mark">
+                    <span class="brand-light brand-red"></span>
+                    <span class="brand-light brand-yellow"></span>
+                    <span class="brand-light brand-green"></span>
+                </span>
+                <span class="brand-text">SURAKSHA.<em>AI</em></span>
+            </a>
+
+            <div class="sidebar-block">
+                <div class="sidebar-title">Modes Available</div>
+                <button class="mode-card active" data-mode="auto">
+                    <span class="mode-icon amber">&#10024;</span>
+                    <span><strong>Auto</strong><small>Detects intent for you</small></span>
+                </button>
+                <button class="mode-card" data-mode="text">
+                    <span class="mode-icon green">&#128172;</span>
+                    <span><strong>Text</strong><small>Rules &amp; explanations</small></span>
+                </button>
+                <button class="mode-card" data-mode="image">
+                    <span class="mode-icon blue">&#128247;</span>
+                    <span><strong>Image</strong><small>Generate visuals</small></span>
+                </button>
+                <button class="mode-card" data-mode="scenario">
+                    <span class="mode-icon red">&#9888;</span>
+                    <span><strong>Scenario</strong><small>Simulated situations</small></span>
+                </button>
+            </div>
+
+            <div class="sidebar-block" id="guestPromptsBlock">
+                <div class="sidebar-title">Quick Prompts</div>
+                <button class="prompt-chip sidebar-chip" data-prompt="Who has right of way at a four-way intersection in India?">&#128160; Right-of-way at intersection</button>
+                <button class="prompt-chip sidebar-chip" data-prompt="Visualize a zebra crossing with pedestrians waiting safely.">&#128694; Visualize zebra crossing</button>
+                <button class="prompt-chip sidebar-chip" data-prompt="Create a helmet safety scenario for a two-wheeler rider.">&#128737; Scenario: helmet safety</button>
+                <button class="prompt-chip sidebar-chip" data-prompt="What are the penalties for drunk driving in India?">&#128296; Drunk driving fines</button>
+            </div>
+
+            <div class="sidebar-block hidden" id="historyBlock">
+                <div class="sidebar-title">Chat History</div>
+                <div id="historyList" class="history-list"></div>
+            </div>
+
+            <div class="guest-limit-card" id="guestLimitCard">
+                <div class="guest-card-copy">
+                    <span class="guest-icon">&#9432;</span>
+                    <p>Guest users can send up to 4 messages. Login to keep memory.</p>
+                </div>
+                <button class="guest-login-btn" type="button" data-open-login>Login</button>
+            </div>
+
+            <div class="settings-card hidden" id="settingsCard">
+                <div class="sidebar-title">Settings</div>
+                <div class="settings-user" id="settingsUser">Logged in</div>
+                <div class="settings-actions">
+                    <button class="settings-action-btn" type="button" data-theme-toggle>Toggle Theme</button>
+                    <button class="settings-action-btn logout-btn" type="button" id="logoutBtn">Logout</button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="chat-main">
+            <header class="chat-header">
+                <div class="assistant-profile">
+                    <span class="assistant-avatar">
+                        <span class="assistant-avatar-core"></span>
+                    </span>
+                    <div>
+                        <strong>Suraksha AI</strong>
+                        <span>Online · Road safety assistant</span>
+                    </div>
+                </div>
+
+                <div class="chat-header-actions">
+                    <!-- <span class="enter-tip"><kbd>Enter</kbd> to send</span> -->
+                    <button class="theme-toggle compact-toggle" type="button" data-theme-toggle>
+                        <span class="theme-toggle-light">Light</span>
+                        <span class="theme-toggle-dark">Dark</span>
+                    </button>
+                    <button class="header-action-btn" id="newChatBtn" type="button">New Chat</button>
+                    <a class="home-icon" href="/" title="Home">&#8962;</a>
+                </div>
+            </header>
+
+            <section class="chat-stage" id="chatStage">
+                <div class="grid-overlay"></div>
+                <div class="ambient ambient-chat-one"></div>
+                <div class="ambient ambient-chat-two"></div>
+
+                <div class="empty-state" id="emptyState">
+                    <div class="traffic-light active-green">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <h1>Ask Suraksha AI anything about roads.</h1>
+                    <p>Try a prompt below, or switch to <strong>Scenario</strong> for simulated situations with imagery.</p>
+                    <div class="empty-prompt-row">
+                        <button class="prompt-chip" data-prompt="What should I do at a flashing amber signal?">&#128737; Flashing amber?</button>
+                        <button class="prompt-chip" data-prompt="Visualize a safe lane change on a busy city road.">&#128247; Safe lane change</button>
+                        <button class="prompt-chip" data-prompt="Create a night pedestrian scenario on an unlit road.">&#127769; Night pedestrian scenario</button>
+                    </div>
+                </div>
+
+                <div id="chatBox" class="chat-box"></div>
+            </section>
+
+            <footer class="composer-shell">
+                <div class="mode-select-wrap">
+                    <select id="mode" name="mode" title="Chat mode">
+                        <option value="auto">Auto</option>
+                        <option value="text">Text</option>
+                        <option value="image">Image</option>
+                        <option value="scenario">Scenario</option>
+                    </select>
+                </div>
+
+                <div class="composer-input-wrap">
+                    <input id="msg" type="text" placeholder="Ask about traffic rules, signs, scenarios..." autocomplete="off">
+                </div>
+
+                <button class="send-btn" onclick="sendMessage()">&#10148; Send</button>
+                <button class="stop-btn" id="stopBtn" onclick="stopResponse()" disabled>&#9632; Stop</button>
+            </footer>
+        </main>
+    </div>
+
+    <div id="loginPopup" class="modal-backdrop">
+        <div class="auth-modal">
+            <button class="modal-close" onclick="closePopup()" title="Close">&#10005;</button>
+
+            <div id="loginSection">
+                <div class="auth-brand">
+                    <span class="brand-mark small-mark">
+                        <span class="brand-light brand-red"></span>
+                        <span class="brand-light brand-yellow"></span>
+                        <span class="brand-light brand-green"></span>
+                    </span>
+                    <span class="brand-text">SURAKSHA.<em>AI</em></span>
+                </div>
+                <h2>Welcome back</h2>
+                <p>Login to keep your chat history on every ride.</p>
+                <div class="auth-fields">
+                    <input id="username" placeholder="Email or Mobile">
+                    <input id="password" type="password" placeholder="Password">
+                </div>
+                <button class="auth-submit" onclick="login()">Login <span>&#8594;</span></button>
+                <div class="auth-switch">Don't have an account? <a href="javascript:void(0)" onclick="toggleAuth(true)">Join / Sign Up</a></div>
+            </div>
+
+            <div id="registerSection" class="hidden-auth">
+                <div class="auth-brand">
+                    <span class="brand-mark small-mark">
+                        <span class="brand-light brand-red"></span>
+                        <span class="brand-light brand-yellow"></span>
+                        <span class="brand-light brand-green"></span>
+                    </span>
+                    <span class="brand-text">SURAKSHA.<em>AI</em></span>
+                </div>
+                <h2>Create account</h2>
+                <p>Save progress, chat history and personalized learning.</p>
+                <div class="auth-fields">
+                    <input id="reg_name" placeholder="Full Name">
+                    <input id="reg_mobile" placeholder="Mobile Number">
+                    <input id="reg_email" placeholder="Email Address">
+                    <input id="reg_password" type="password" placeholder="Password">
+                </div>
+                <button class="auth-submit" onclick="register()">Create account <span>&#8594;</span></button>
+                <div class="auth-switch">Already have an account? <a href="javascript:void(0)" onclick="toggleAuth(false)">Back to Login</a></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

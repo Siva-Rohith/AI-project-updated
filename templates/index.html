@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suraksha AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@1,500;1,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="landing-body">
+    <div class="page-shell landing-shell">
+        <div class="ambient ambient-one"></div>
+        <div class="ambient ambient-two"></div>
+        <div class="ambient ambient-three"></div>
+
+        <header class="topbar">
+            <a class="brand" href="/">
+                <span class="brand-mark">
+                    <span class="brand-light brand-red"></span>
+                    <span class="brand-light brand-yellow"></span>
+                    <span class="brand-light brand-green"></span>
+                </span>
+                <span class="brand-text">SURAKSHA.<em>AI</em></span>
+            </a>
+
+            <nav class="topnav">
+                <a href="#features">Features</a>
+                <a href="#how-it-works">How it works</a>
+                <a href="#safety">Safety</a>
+                <button class="theme-toggle" type="button" data-theme-toggle>
+                    <span class="theme-toggle-light">Light</span>
+                    <span class="theme-toggle-dark">Dark</span>
+                </button>
+                <button class="nav-auth-btn" id="indexAuthButton" type="button">Login</button>
+                <span class="status-pill">
+                    <span class="status-dot"></span>
+                    System Online
+                </span>
+            </nav>
+        </header>
+
+        <main class="hero">
+            <section class="hero-copy">
+                <div class="hero-tag">Road Safety Intelligence • India</div>
+                <h1 class="hero-title">
+                    <span>Drive Smarter.</span>
+                    <span class="accent">Stay Safer.</span>
+                </h1>
+                <div class="hero-script">Learn with AI.</div>
+                <p class="hero-description">
+                    An AI co-pilot trained on traffic rules, accident scenarios and on-road
+                    decision making. Ask, visualize, simulate — build road instincts before
+                    the road tests you.
+                </p>
+
+                <div class="hero-actions">
+                    <a class="primary-btn" href="/chat">Enter Simulator <span>&#8594;</span></a>
+                    <a class="secondary-btn" href="/chat">
+                        <span class="play-icon">&#9654;</span>
+                        See capabilities
+                    </a>
+                </div>
+
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <strong>24/7</strong>
+                        <span>Live AI mentor</span>
+                    </div>
+                    <div class="stat-item">
+                        <strong>3 Modes</strong>
+                        <span>Text · Image · Scenario</span>
+                    </div>
+                    <div class="stat-item">
+                        <strong>100%</strong>
+                        <span>Focused on safety</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="hero-visual">
+                <div class="floating-card top-card">
+                    <span class="mini-icon yellow-icon">&#128737;</span>
+                    <div>
+                        <strong>Wear helmet</strong>
+                        <span>Even for short rides</span>
+                    </div>
+                </div>
+
+                <div class="floating-card mid-card">
+                    <span class="mini-icon green-icon">&#128994;</span>
+                    <div>
+                        <strong>Obey signals</strong>
+                        <span>No amber sprint</span>
+                    </div>
+                </div>
+
+                <div class="floating-card bottom-card">
+                    <span class="mini-icon red-icon">&#9888;</span>
+                    <div>
+                        <strong>Lane discipline</strong>
+                        <span>Stay left unless overtaking</span>
+                    </div>
+                </div>
+
+                
+            </section>
+        </main>
+        <div class="signal-card">
+                    <div class="signal-card-top">
+                        <span>Signal #042</span>
+                        <span class="live-indicator"><i></i> Live</span>
+                    </div>
+
+                    <div class="signal-preview">
+                        <div class="traffic-light active-red">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+
+                    <div class="signal-meta">
+                        <div><span>Status</span><strong>STOP</strong></div>
+                        <div><span>Next</span><strong>GO • 00:12</strong></div>
+                        <div><span>Zone</span><strong>School • 30 km/h</strong></div>
+                    </div>
+                </div>
+        <section class="feature-grid" id="features">
+            <article class="feature-card">
+                <div class="feature-icon amber">&#128172;</div>
+                <h3>Ask anything traffic</h3>
+                <p>Signals, fines, licensing, insurance — get precise, India-specific answers.</p>
+            </article>
+            <article class="feature-card">
+                <div class="feature-icon green">&#128247;</div>
+                <h3>Visualize scenes</h3>
+                <p>Generate realistic road imagery to understand lanes, signs and situations.</p>
+            </article>
+            <article class="feature-card" id="how-it-works">
+                <div class="feature-icon red">&#9888;</div>
+                <h3>Simulate scenarios</h3>
+                <p>Walk through accident cases with risk, correct action and takeaways.</p>
+            </article>
+            <article class="feature-card" id="safety">
+                <div class="feature-icon blue">&#128101;</div>
+                <h3>Save your progress</h3>
+                <p>Login to retain memory across sessions and keep learning where you left off.</p>
+            </article>
+        </section>
+    </div>
+
+    <div id="loginPopup" class="modal-backdrop">
+        <div class="auth-modal">
+            <button class="modal-close" onclick="closePopup()" title="Close">&#10005;</button>
+
+            <div id="loginSection">
+                <div class="auth-brand">
+                    <span class="brand-mark small-mark">
+                        <span class="brand-light brand-red"></span>
+                        <span class="brand-light brand-yellow"></span>
+                        <span class="brand-light brand-green"></span>
+                    </span>
+                    <span class="brand-text">SURAKSHA.<em>AI</em></span>
+                </div>
+                <h2>Welcome back</h2>
+                <p>Login to continue your learning with saved chat history.</p>
+                <div class="auth-fields">
+                    <input id="username" placeholder="Email or Mobile">
+                    <input id="password" type="password" placeholder="Password">
+                </div>
+                <button class="auth-submit" onclick="login()">Login <span>&#8594;</span></button>
+                <div class="auth-switch">Don't have an account? <a href="javascript:void(0)" onclick="toggleAuth(true)">Join / Sign Up</a></div>
+            </div>
+
+            <div id="registerSection" class="hidden-auth">
+                <div class="auth-brand">
+                    <span class="brand-mark small-mark">
+                        <span class="brand-light brand-red"></span>
+                        <span class="brand-light brand-yellow"></span>
+                        <span class="brand-light brand-green"></span>
+                    </span>
+                    <span class="brand-text">SURAKSHA.<em>AI</em></span>
+                </div>
+                <h2>Create account</h2>
+                <p>Save progress, chat history and personalized learning.</p>
+                <div class="auth-fields">
+                    <input id="reg_name" placeholder="Full Name">
+                    <input id="reg_mobile" placeholder="Mobile Number">
+                    <input id="reg_email" placeholder="Email Address">
+                    <input id="reg_password" type="password" placeholder="Password">
+                </div>
+                <button class="auth-submit" onclick="register()">Create account <span>&#8594;</span></button>
+                <div class="auth-switch">Already have an account? <a href="javascript:void(0)" onclick="toggleAuth(false)">Back to Login</a></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

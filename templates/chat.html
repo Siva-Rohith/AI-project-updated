@@ -41,35 +41,34 @@
                 </button>
             </div>
 
-            <div class="sidebar-block" id="guestPromptsBlock">
-                <div class="sidebar-title">Quick Prompts</div>
-                <button class="prompt-chip sidebar-chip" data-prompt="Who has right of way at a four-way intersection in India?">&#128160; Right-of-way at intersection</button>
-                <button class="prompt-chip sidebar-chip" data-prompt="Visualize a zebra crossing with pedestrians waiting safely.">&#128694; Visualize zebra crossing</button>
-                <button class="prompt-chip sidebar-chip" data-prompt="Create a helmet safety scenario for a two-wheeler rider.">&#128737; Scenario: helmet safety</button>
-                <button class="prompt-chip sidebar-chip" data-prompt="What are the penalties for drunk driving in India?">&#128296; Drunk driving fines</button>
-            </div>
+            <div class="sidebar-scroll">
+    <div class="sidebar-block" id="guestPromptsBlock">
+        <div class="sidebar-title">Quick Prompts</div>
+        <button class="prompt-chip sidebar-chip" data-prompt="Who has right of way at a four-way intersection in India?">&#128160; Right-of-way at intersection</button>
+        <button class="prompt-chip sidebar-chip" data-prompt="Visualize a zebra crossing with pedestrians waiting safely.">&#128694; Visualize zebra crossing</button>
+        <button class="prompt-chip sidebar-chip" data-prompt="Create a helmet safety scenario for a two-wheeler rider.">&#128737; Scenario: helmet safety</button>
+        <button class="prompt-chip sidebar-chip" data-prompt="What are the penalties for drunk driving in India?">&#128296; Drunk driving fines</button>
+    </div>
 
-            <div class="sidebar-block hidden" id="historyBlock">
-                <div class="sidebar-title">Chat History</div>
-                <div id="historyList" class="history-list"></div>
-            </div>
+    <div class="sidebar-block hidden" id="historyBlock">
+        <div class="sidebar-title">Chat History</div>
+        <div id="historyList" class="history-list"></div>
+    </div>
 
-            <div class="guest-limit-card" id="guestLimitCard">
-                <div class="guest-card-copy">
-                    <span class="guest-icon">&#9432;</span>
-                    <p>Guest users can send up to 4 messages. Login to keep memory.</p>
-                </div>
-                <button class="guest-login-btn" type="button" data-open-login>Login</button>
-            </div>
+    <div class="guest-limit-card" id="guestLimitCard">
+        <div class="guest-card-copy">
+            <span class="guest-icon">&#9432;</span>
+            <p>Guest users can send up to 4 messages. Login to keep memory.</p>
+        </div>
+        <button class="guest-login-btn" type="button" data-open-login>Login</button>
+    </div>
+</div>
+            
 
-            <div class="settings-card hidden" id="settingsCard">
-                <div class="sidebar-title">Settings</div>
-                <div class="settings-user" id="settingsUser">Logged in</div>
-                <div class="settings-actions">
-                    <button class="settings-action-btn" type="button" data-theme-toggle>Toggle Theme</button>
-                    <button class="settings-action-btn logout-btn" type="button" id="logoutBtn">Logout</button>
-                </div>
-            </div>
+            <div class="settings-footer hidden" id="settingsCard">
+    <div class="settings-user" id="settingsUser"></div>
+    <button class="logout-icon-btn" type="button" id="logoutBtn" title="Logout">&#10162;</button>
+</div>
         </aside>
 
         <main class="chat-main">
@@ -91,6 +90,7 @@
                         <span class="theme-toggle-dark">Dark</span>
                     </button>
                     <button class="header-action-btn" id="newChatBtn" type="button">New Chat</button>
+                    <button id="sidebarToggleBtn" class="sidebar-toggle-btn">☰</button>
                     <a class="home-icon" href="/" title="Home">&#8962;</a>
                 </div>
             </header>

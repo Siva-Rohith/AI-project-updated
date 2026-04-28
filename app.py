@@ -22,16 +22,29 @@ def init_db():
         password TEXT
     )
     """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS chat_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
+        )
+    """)
 
     # Chats table
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS chats (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        message TEXT,
-        response TEXT
-    )
-    """)
+    
 
     conn.commit()
     conn.close()
@@ -103,40 +116,7 @@ def get_db_connection():
     return sqlite3.connect("users.db")
 
 
-def save_chat_entry(user_id, message, response):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO chats (user_id, message, response) VALUES (?, ?, ?)",
-        (user_id, message, response)
-    )
-    chat_id = c.lastrowid
-    conn.commit()
-    conn.close()
-    return chat_id
 
-
-def update_chat_response(chat_id, response):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute(
-        "UPDATE chats SET response=? WHERE id=?",
-        (response, chat_id)
-    )
-    conn.commit()
-    conn.close()
-
-
-def fetch_recent_chat_pairs(user_id, limit=12):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute(
-        "SELECT id, message, response FROM chats WHERE user_id=? ORDER BY id DESC LIMIT ?",
-        (user_id, limit)
-    )
-    rows = c.fetchall()
-    conn.close()
-    return rows
 
 # 🏠 Entrance
 @app.route("/")
@@ -166,24 +146,104 @@ def chat_history():
     if not user_id:
         return jsonify({"logged_in": False, "items": []})
 
-    rows = fetch_recent_chat_pairs(user_id, limit=12)
-    items = []
-    for row_id, message, response in rows:
-        clean_message = (message or "").strip()
-        clean_response = (response or "").strip()
-        items.append({
-            "id": row_id,
-            "title": clean_message[:48] + ("..." if len(clean_message) > 48 else ""),
-            "message": clean_message,
-            "preview": (clean_response or "No response saved yet")[:76] + ("..." if len(clean_response or "No response saved yet") > 76 else "")
-        })
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("""
+        SELECT id, title, created_at
+        FROM chat_sessions
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+    """, (user_id,)).fetchall()
+    conn.close()
 
-    return jsonify({"logged_in": True, "items": items})
+    return jsonify({
+        "logged_in": True,
+        "items": [dict(row) for row in rows]
+    })
+
+
 
 # 💬 Chat page
 @app.route("/chat")
 def chat_page():
     return render_template("chat.html")
+
+@app.route("/new-chat", methods=["POST"])
+def new_chat():
+    if "user_id" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO chat_sessions (user_id, title)
+        VALUES (?, ?)
+    """, (session["user_id"], "New Chat"))
+
+    session_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+
+    return jsonify({"session_id": session_id, "title": "New Chat"})
+
+
+
+
+@app.route("/chat-session/<int:session_id>", methods=["GET"])
+def get_chat_session(session_id):
+    if "user_id" not in session:
+        return jsonify([])
+
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    messages = conn.execute("""
+        SELECT role, content
+        FROM chat_messages
+        WHERE session_id = ?
+        ORDER BY created_at ASC
+    """, (session_id,)).fetchall()
+    conn.close()
+
+    return jsonify([dict(msg) for msg in messages])
+
+
+
+
+
+
+@app.route("/delete-chat/<int:session_id>", methods=["DELETE"])
+def delete_chat(session_id):
+    if "user_id" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    # verify session belongs to logged-in user
+    existing = cur.execute("""
+        SELECT id FROM chat_sessions
+        WHERE id = ? AND user_id = ?
+    """, (session_id, session["user_id"])).fetchone()
+
+    if not existing:
+        conn.close()
+        return jsonify({"error": "Not found"}), 404
+
+    # delete child messages first
+    cur.execute("DELETE FROM chat_messages WHERE session_id = ?", (session_id,))
+    # delete parent session
+    cur.execute("DELETE FROM chat_sessions WHERE id = ?", (session_id,))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"status": "success", "deleted_id": session_id})
+
+
+
+
 
 # 🔥 Chat API
 @app.route("/chat", methods=["POST"])
@@ -193,6 +253,7 @@ def chat():
     data = request.get_json(silent=True) or {}
     guest_history = data.get("history", [])
     message = (data.get("message") or "").strip()
+    session_id = data.get("session_id")
     mode = data.get("mode")
     if mode == "auto":
         mode = detect_intent_gemini(message)
@@ -250,14 +311,29 @@ def chat():
             # 🔥 Generate image from scenario
             
 
-            if user_id:
-                save_chat_entry(user_id, message, scenario_text)
+            if user_id and session_id:
+                conn = get_db_connection()
+                cur = conn.cursor()
+
+                cur.execute("""
+                    INSERT INTO chat_messages (session_id, role, content)
+                    VALUES (?, ?, ?)
+                """, (session_id, "user", message))
+
+                cur.execute("""
+                    INSERT INTO chat_messages (session_id, role, content)
+                    VALUES (?, ?, ?)
+                """, (session_id, "bot", scenario_text))
+
+                conn.commit()
+                conn.close()
 
             return jsonify({
                 "type": "scenario",
-                "mode": "scenario", 
+                "mode": "scenario",
                 "text": scenario_text,
-                "url": "data:image/png;base64," + image_base64
+                "url": "data:image/png;base64," + image_base64,
+                "session_id": session_id
             })
 
         except Exception as e:
@@ -279,12 +355,27 @@ def chat():
     if mode == "image":
         try:
             image_base64 = generate_image(message)
-            if user_id:
-                save_chat_entry(user_id, message, "[Image Generated]")
+            if user_id and session_id:
+                conn = get_db_connection()
+                cur = conn.cursor()
+
+                cur.execute("""
+                    INSERT INTO chat_messages (session_id, role, content)
+                    VALUES (?, ?, ?)
+                """, (session_id, "user", message))
+
+                cur.execute("""
+                    INSERT INTO chat_messages (session_id, role, content)
+                    VALUES (?, ?, ?)
+                """, (session_id, "bot", "[Image Generated]"))
+
+                conn.commit()
+                conn.close()
             return jsonify({
                 "type": "image",
                 "mode": "image",
-                "url": "data:image/png;base64," + image_base64
+                "url": "data:image/png;base64," + image_base64,
+                "session_id": session_id
             })
         except Exception as e:
             print("Image Error:", e)
@@ -295,19 +386,56 @@ def chat():
     # 🔥 BUILD CONTEXT (NEW)
     context = ""
 
-    if user_id:
-        history = [(m, r) for _, m, r in fetch_recent_chat_pairs(user_id, limit=5)]
+    if user_id and session_id:
+        conn = get_db_connection()
+        conn.row_factory = sqlite3.Row
 
-        for m, r in reversed(history):
-            context += f"User: {m}\nBot: {r}\n"
+        history = conn.execute("""
+            SELECT role, content
+            FROM chat_messages
+            WHERE session_id = ?
+            ORDER BY created_at ASC
+            LIMIT 10
+        """, (session_id,)).fetchall()
+
+        conn.close()
+
+        temp_user = None
+        for row in history:
+            if row["role"] == "user":
+                temp_user = row["content"]
+            elif row["role"] == "bot" and temp_user:
+                context += f"User: {temp_user}\nBot: {row['content']}\n"
+                temp_user = None
 
     else:
         for item in guest_history:
             context += f"User: {item['message']}\nBot: {item['response']}\n"
-    # 🔥 SAVE CURRENT MESSAGE (only if logged in)
-    chat_id = None
+
     if user_id:
-        chat_id = save_chat_entry(user_id, message, "")
+        conn = get_db_connection()
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+
+        if not session_id:
+            cur.execute(
+                "INSERT INTO chat_sessions (user_id, title) VALUES (?, ?)",
+                (user_id, message[:40])
+            )
+            session_id = cur.lastrowid
+
+        cur.execute("""
+            INSERT INTO chat_messages (session_id, role, content)
+            VALUES (?, ?, ?)
+        """, (session_id, "user", message))
+
+        conn.commit()
+
+        
+    # 🔥 SAVE CURRENT MESSAGE (only if logged in)
+    # chat_id = None
+    # if user_id:
+    #     chat_id = save_chat_entry(user_id, message, "")
     # if is_first_message:
     #     intro_prompt = (
     #         "For the first message, you MUST respond EXACTLY like this style:\n"
@@ -401,9 +529,14 @@ def chat():
                 except Exception:
                     pass
                 yield decoded_line + "\n"
-        if user_id and chat_id is not None:
-            update_chat_response(chat_id, "".join(full_response).strip())
-
+        if user_id and session_id:
+            cur.execute("""
+                INSERT INTO chat_messages (session_id, role, content)
+                VALUES (?, ?, ?)
+            """, (session_id, "bot", "".join(full_response).strip()))
+            conn.commit()
+            conn.close()
+        yield json.dumps({"done": True, "session_id": session_id}) + "\n"
     return Response(
         stream_with_context(generate()),
         content_type="text/plain",
@@ -468,11 +601,19 @@ def login():
         session["user_name"] = user[1]
 
         # 🔥 SAVE GUEST HISTORY INTO DB
-        for item in guest_history:
-            c.execute(
-                "INSERT INTO chats (user_id, message, response) VALUES (?, ?, ?)",
-                (user_id, item["message"], item["response"])
-            )
+        if guest_history:
+            c.execute("INSERT INTO chat_sessions (user_id, title) VALUES (?, ?)", (user_id, "Guest Chat"))
+            session_id = c.lastrowid
+
+            for item in guest_history:
+                c.execute(
+                    "INSERT INTO chat_messages (session_id, role, content) VALUES (?, ?, ?)",
+                    (session_id, "user", item["message"])
+                )
+                c.execute(
+                    "INSERT INTO chat_messages (session_id, role, content) VALUES (?, ?, ?)",
+                    (session_id, "bot", item["response"])
+                )
 
         conn.commit()
         conn.close()

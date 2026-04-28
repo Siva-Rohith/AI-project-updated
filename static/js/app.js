@@ -2,6 +2,7 @@ let controller = null;
 let chatHistory = [];
 let isProcessing = false;
 let loginState = { logged_in: false, user_name: "" };
+let activeSessionId = null;
 
 const chatBox = document.getElementById("chatBox");
 const msgInput = document.getElementById("msg");
@@ -127,15 +128,34 @@ function renderHistoryItems(items) {
         button.className = "history-item";
         button.type = "button";
         button.innerHTML = `
-            <strong>${item.title || "Untitled chat"}</strong>
-            <span>${item.preview || ""}</span>
-        `;
-        button.addEventListener("click", () => {
-            if (msgInput && item.message) {
-                msgInput.value = item.message;
-                msgInput.focus();
-            }
-        });
+    <div class="history-content">
+        <strong>${item.title || "Untitled chat"}</strong>
+    </div>
+    <button class="delete-chat-btn" data-id="${item.id}">✕</button>
+`;
+        button.querySelector(".history-content").addEventListener("click", () => loadChatSession(item.id));
+
+button.querySelector(".delete-chat-btn").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const confirmDelete = confirm("Are you sure you want to delete this chat?");
+    // const confirmDelete = confirm(`Delete "${item.title}"?`);
+
+    if (!confirmDelete) return;
+
+    const res = await fetch(`/delete-chat/${item.id}`, {
+        method: "DELETE"
+    });
+
+    const data = await res.json();
+
+    if (data.status === "success") {
+        if (activeSessionId === item.id) {
+            clearChatView();
+            activeSessionId = null;
+        }
+        loadChatHistory();
+    }
+});
         historyList.appendChild(button);
     });
 }
@@ -146,6 +166,29 @@ async function loadChatHistory() {
     const res = await fetch("/chat-history");
     const data = await res.json();
     renderHistoryItems(data.items || []);
+}
+
+async function loadChatSession(sessionId) {
+    activeSessionId = sessionId;
+    clearChatView();
+
+    const res = await fetch(`/chat-session/${sessionId}`);
+    const messages = await res.json();
+
+    chatHistory = [];
+    let currentUserMessage = null;
+
+    messages.forEach((msg) => {
+        addMessage(msg.content, msg.role);
+
+        if (msg.role === "user") {
+            currentUserMessage = { message: msg.content, response: "" };
+            chatHistory.push(currentUserMessage);
+        } else if (msg.role === "bot" && currentUserMessage) {
+            currentUserMessage.response = msg.content;
+            currentUserMessage = null;
+        }
+    });
 }
 
 function syncSidebarForAuth() {
@@ -249,10 +292,11 @@ async function sendMessage() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                message: msg,
-                mode: mode,
-                history: chatHistory
-            }),
+            message: msg,
+            mode: mode,
+            history: chatHistory,
+            session_id: activeSessionId
+        }),
             signal: controller.signal
         });
 
@@ -260,7 +304,7 @@ async function sendMessage() {
 
         if (contentType && contentType.includes("application/json")) {
             const data = await res.json();
-
+            if (data.session_id) activeSessionId = data.session_id;
             if ((data.mode === "image" || data.mode === "scenario") && interval) {
                 clearInterval(interval);
                 interval = null;
@@ -329,6 +373,9 @@ async function sendMessage() {
                         fullText += json.response;
                         chatBox.scrollTop = chatBox.scrollHeight;
                     }
+                    if (json.session_id) {
+    activeSessionId = json.session_id;
+}
                 } catch (error) {
                     console.error("Stream parse error", error);
                 }
@@ -396,7 +443,8 @@ async function login() {
         body: JSON.stringify({
             username,
             password,
-            history: chatHistory
+            history: chatHistory,
+            session_id: activeSessionId
         })
     });
 
@@ -407,6 +455,7 @@ async function login() {
         await initializeAuthUI();
         if (window.location.pathname === "/chat") {
             chatHistory = [];
+            activeSessionId = null;
         }
         alert("Login successful!");
     } else {
@@ -463,7 +512,11 @@ async function logout() {
 function attachPageActions() {
     const newChatBtn = document.getElementById("newChatBtn");
     if (newChatBtn) {
-        newChatBtn.addEventListener("click", clearChatView);
+        newChatBtn.addEventListener("click", () => {
+            clearChatView();
+            activeSessionId = null;
+            bindPromptChips();
+        });
     }
 
     document.querySelectorAll("[data-open-login]").forEach((button) => {
@@ -474,6 +527,37 @@ function attachPageActions() {
     if (logoutBtn) {
         logoutBtn.addEventListener("click", logout);
     }
+    const chatApp = document.querySelector(".chat-app");
+const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
+
+if (sidebarToggleBtn && chatApp) {
+    sidebarToggleBtn.addEventListener("click", () => {
+        const isMobile = window.innerWidth <= 960;
+
+        if (isMobile) {
+            chatApp.classList.toggle("sidebar-open");
+            chatApp.classList.toggle("sidebar-collapsed");
+        } else {
+            chatApp.classList.toggle("sidebar-collapsed");
+        }
+    });
+
+    if (window.innerWidth <= 960) {
+        chatApp.classList.add("sidebar-collapsed");
+    }
+}
+}
+
+function bindPromptChips() {
+    document.querySelectorAll(".prompt-chip").forEach((chip) => {
+        chip.onclick = () => {
+            const prompt = chip.dataset.prompt || "";
+            if (!msgInput) return;
+
+            msgInput.value = prompt;
+            msgInput.focus();
+        };
+    });
 }
 
 if (msgInput) {
@@ -485,9 +569,12 @@ if (msgInput) {
     });
 }
 
+
+
 attachThemeHandlers();
 attachPromptHandlers();
 attachModeHandlers();
 attachPageActions();
 syncEmptyState();
+bindPromptChips();
 initializeAuthUI().catch(console.error);

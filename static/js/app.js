@@ -24,6 +24,9 @@ function toggleTheme() {
     applyTheme(getTheme() === "dark" ? "light" : "dark");
 }
 
+
+
+
 function syncEmptyState() {
     if (!emptyState || !chatBox) return;
     emptyState.classList.toggle("hidden", chatBox.children.length > 0);
@@ -82,11 +85,54 @@ async function isUserLoggedIn() {
     return !!state.logged_in;
 }
 
+
+
+let isMuted = false;
+let selectedVoiceType = "female";
+
+function speakText(text) {
+    if (!("speechSynthesis" in window) || !text || isMuted) return;
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    const voices = window.speechSynthesis.getVoices();
+
+    let preferred = null;
+
+    if (selectedVoiceType === "male") {
+        preferred =
+            voices.find(v => v.name.toLowerCase().includes("david")) ||
+            voices.find(v => v.name.toLowerCase().includes("male")) ||
+            voices.find(v => v.lang.startsWith("en"));
+    } else {
+        preferred =
+            voices.find(v => v.name.includes("Google UK English Female")) ||
+            voices.find(v => v.name.includes("Microsoft Zira")) ||
+            voices.find(v => v.name.toLowerCase().includes("female")) ||
+            voices.find(v => v.lang.startsWith("en"));
+    }
+
+    if (preferred) utterance.voice = preferred;
+
+    window.speechSynthesis.speak(utterance);
+}
+
+
+
+
 function addMessage(content, type, isHtml = false) {
     if (!chatBox) return null;
 
     const div = document.createElement("div");
     div.className = "msg " + type;
+    if (type === "bot") {
+    div.classList.add("bot-wrap");
+}
 
     if (isHtml) {
         div.innerHTML = content;
@@ -94,7 +140,21 @@ function addMessage(content, type, isHtml = false) {
         div.innerText = content;
     }
 
+    if (type === "bot") {
+    const wrapper = document.createElement("div");
+    wrapper.className = "bot-message-wrap";
+
+    const replayBtn = document.createElement("button");
+    replayBtn.className = "replay-voice-btn";
+    replayBtn.innerText = "🔊";
+    replayBtn.onclick = () => speakText(div.innerText);
+
+    wrapper.appendChild(div);
+    wrapper.appendChild(replayBtn);
+    chatBox.appendChild(wrapper);
+} else {
     chatBox.appendChild(div);
+}
     chatBox.scrollTop = chatBox.scrollHeight;
     syncEmptyState();
     return div;
@@ -205,7 +265,7 @@ function syncSidebarForAuth() {
         historyBlock?.classList.remove("hidden");
         settingsCard?.classList.remove("hidden");
         if (settingsUser) {
-            settingsUser.textContent = `Logged in as ${loginState.user_name || "User"}`;
+            settingsUser.textContent = loginState.user_name || "User";
         }
         if (indexAuthButton) {
             indexAuthButton.textContent = "Open Chat";
@@ -236,6 +296,8 @@ async function initializeAuthUI() {
 
 async function sendMessage() {
     if (isProcessing || !msgInput || !modeSelect) return;
+    
+    window.speechSynthesis.cancel();
 
     const msg = msgInput.value.trim();
     const mode = modeSelect.value;
@@ -313,6 +375,7 @@ async function sendMessage() {
             if (data.response && botDiv) {
                 botDiv.innerText = data.response;
                 chatHistory[chatHistory.length - 1].response = data.response;
+                speakText(data.response);
             }
 
             if (data.type === "image" && botDiv) {
@@ -383,6 +446,11 @@ async function sendMessage() {
         }
 
         chatHistory[chatHistory.length - 1].response = fullText;
+
+        if (fullText.trim()) {
+            speakText(fullText);
+        }
+
         if (loginState.logged_in) {
             loadChatHistory().catch(console.error);
         }
@@ -515,7 +583,7 @@ function attachPageActions() {
         newChatBtn.addEventListener("click", () => {
             clearChatView();
             activeSessionId = null;
-            bindPromptChips();
+            
         });
     }
 
@@ -546,19 +614,30 @@ if (sidebarToggleBtn && chatApp) {
         chatApp.classList.add("sidebar-collapsed");
     }
 }
-}
 
-function bindPromptChips() {
-    document.querySelectorAll(".prompt-chip").forEach((chip) => {
-        chip.onclick = () => {
-            const prompt = chip.dataset.prompt || "";
-            if (!msgInput) return;
 
-            msgInput.value = prompt;
-            msgInput.focus();
-        };
+const muteToggleBtn = document.getElementById("muteToggleBtn");
+if (muteToggleBtn) {
+    muteToggleBtn.addEventListener("click", () => {
+        isMuted = !isMuted;
+        muteToggleBtn.innerText = isMuted ? "🔇" : "🔊";
+
+        if (isMuted) {
+            window.speechSynthesis.cancel();
+        }
     });
 }
+
+const voiceSelect = document.getElementById("voiceSelect");
+if (voiceSelect) {
+    voiceSelect.addEventListener("change", () => {
+        selectedVoiceType = voiceSelect.value;
+    });
+}
+}
+
+
+
 
 if (msgInput) {
     msgInput.addEventListener("keydown", (event) => {
@@ -576,5 +655,5 @@ attachPromptHandlers();
 attachModeHandlers();
 attachPageActions();
 syncEmptyState();
-bindPromptChips();
+
 initializeAuthUI().catch(console.error);

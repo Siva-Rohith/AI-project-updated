@@ -54,7 +54,7 @@
         <div class="sidebar-title">Chat History</div>
         <div id="historyList" class="history-list"></div>
     </div>
-
+    </div>
     <div class="guest-limit-card" id="guestLimitCard">
         <div class="guest-card-copy">
             <span class="guest-icon">&#9432;</span>
@@ -62,7 +62,7 @@
         </div>
         <button class="guest-login-btn" type="button" data-open-login>Login</button>
     </div>
-</div>
+
             
 
             <div class="settings-footer hidden" id="settingsCard">
@@ -89,6 +89,13 @@
                         <span class="theme-toggle-light">Light</span>
                         <span class="theme-toggle-dark">Dark</span>
                     </button>
+                  <button class="header-action-btn" id="muteToggleBtn" type="button">🔊</button>
+
+                    <select id="voiceSelect" class="voice-select" title="voice">
+                        <option value="female">Female</option>
+                        <option value="male">Male</option>
+                    </select>
+
                     <button class="header-action-btn" id="newChatBtn" type="button">New Chat</button>
                     <button id="sidebarToggleBtn" class="sidebar-toggle-btn">☰</button>
                     <a class="home-icon" href="/" title="Home">&#8962;</a>

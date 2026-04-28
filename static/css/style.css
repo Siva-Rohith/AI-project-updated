@@ -1312,7 +1312,7 @@ html[data-theme="light"] .grid-overlay {
 html[data-theme="light"] .composer-input-wrap input,
 html[data-theme="light"] .mode-select-wrap select,
 html[data-theme="light"] .auth-fields input {
-    color: #18202f;
+    color: #ffffff;
 }
 
 html[data-theme="light"] .composer-input-wrap input::placeholder,
@@ -1730,14 +1730,15 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
    ========================= */
 
 /* stop full-page scrolling */
-html,
+/* html,
 body {
     height: 100%;
-}
 
-body.chat-body {
+} */
+
+/* body.chat-body {
     overflow: hidden;
-}
+} */
 
 /* lock app to viewport */
 .chat-app {
@@ -2192,4 +2193,210 @@ html[data-theme="light"] .assistant-profile strong {
 html[data-theme="light"] .theme-toggle-light,
 html[data-theme="light"] .theme-toggle-dark {
     color: #18202f;
+}
+
+
+/* =========================
+   Compact guest warning card
+========================= */
+.guest-limit-card {
+    flex-shrink: 0;
+    margin: 5px 5px 0;
+    padding: 5px;
+    border-radius: 18px;
+    max-width: calc(100% - 50px);
+}
+
+.guest-card-copy {
+    gap: 3px;
+    margin-bottom: 5px;
+}
+
+.guest-icon {
+    font-size: 0.55rem;
+    margin-top: 1px;
+}
+
+.guest-card-copy p {
+    font-size: 0.55rem;
+    line-height: 1.4;
+}
+
+.guest-login-btn {
+    height: 30px;
+    font-size: 1rem;
+    
+    border-radius: 8px;
+}
+
+
+/* =========================
+   Make quick prompts scroll
+========================= */
+#guestPromptsBlock {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+#guestPromptsBlock .sidebar-title {
+    flex-shrink: 0;
+}
+
+#guestPromptsBlock .prompt-chip {
+    flex-shrink: 0;
+}
+
+#guestPromptsBlock {
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+}
+
+
+/* =========================
+   Smooth sidebar scrolling
+========================= */
+.sidebar-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sidebar-scroll::-webkit-scrollbar,
+#guestPromptsBlock::-webkit-scrollbar,
+#historyList::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb,
+#guestPromptsBlock::-webkit-scrollbar-thumb,
+#historyList::-webkit-scrollbar-thumb {
+    background: rgba(120, 130, 160, 0.35);
+    border-radius: 10px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track,
+#guestPromptsBlock::-webkit-scrollbar-track,
+#historyList::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+
+
+
+
+/* === FIX CENTER PROMPT BUTTON CLICK === */
+
+.empty-state {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.empty-state * {
+    pointer-events: auto;
+}
+
+.empty-prompt-row {
+    position: relative;
+    z-index: 7;
+}
+
+.prompt-chip {
+    position: relative;
+    z-index: 8;
+    cursor: pointer;
+}
+
+.chat-box {
+    position: relative;
+    z-index: 2;
+}
+
+/* light theme active mode card */
+html[data-theme="light"] .mode-card.active,
+html[data-theme="light"] .mode-card[aria-pressed="true"] {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(255, 171, 31, 0.55);
+    box-shadow:
+        0 0 0 1px rgba(255, 171, 31, 0.08),
+        0 8px 22px rgba(255, 171, 31, 0.08);
+}
+
+html[data-theme="light"] .mode-card.active .mode-title,
+html[data-theme="light"] .mode-card[aria-pressed="true"] .mode-title {
+    color: #111827;
+}
+
+
+/* =========================
+   LANDING LIGHT THEME FINAL FIX
+========================= */
+
+html[data-theme="light"] .landing-shell,
+html[data-theme="light"] .page-shell.landing-shell {
+    background: transparent !important;
+}
+
+html[data-theme="light"] .landing-shell::before,
+html[data-theme="light"] .landing-shell::after,
+html[data-theme="light"] .page-shell.landing-shell::before,
+html[data-theme="light"] .page-shell.landing-shell::after {
+    display: none !important;
+    background: none !important;
+}
+
+/* =========================
+   LIGHT THEME LOGIN MODAL FIX
+========================= */
+
+html[data-theme="light"] .auth-card input,
+html[data-theme="light"] .auth-card input[type="text"],
+html[data-theme="light"] .auth-card input[type="email"],
+html[data-theme="light"] .auth-card input[type="password"] {
+    background: #ffffff !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #111827 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-theme="light"] .auth-card input::placeholder {
+    color:white !important;
+    opacity: 1 !important;
+}
+
+
+
+.voice-select {
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.08);
+    color: inherit;
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 13px;
+}
+
+.bot-message-wrap {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.replay-voice-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 15px;
+    opacity: 0.75;
+    margin-top: 6px;
+}
+
+.replay-voice-btn:hover {
+    opacity: 1;
 }

@@ -2400,3 +2400,47 @@ html[data-theme="light"] .auth-card input::placeholder {
 .replay-voice-btn:hover {
     opacity: 1;
 }
+
+.composer-input-wrap {
+    position: relative;
+}
+
+#msg {
+    padding-right: 48px;
+}
+
+.mic-inside-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 30px;
+}
+
+
+.history-item.active {
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.history-item.active strong {
+    color: #ffffff;
+}
+
+
+
+html[data-theme="light"] .history-item.active {
+    background: rgba(255, 171, 31, 0.10);
+    border-color: rgba(255, 171, 31, 0.28);
+}
+
+html[data-theme="light"] .history-item.active strong {
+    color: #18202f;
+}
+
+html[data-theme="light"] .history-item.active span {
+    color: #5f6f86;
+}

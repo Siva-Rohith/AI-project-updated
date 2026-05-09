@@ -89,6 +89,74 @@ async function isUserLoggedIn() {
 
 let isMuted = false;
 let selectedVoiceType = "female";
+let currentUtterance = null;
+let currentSpeechBtn = null;
+let isPausedSpeech = false;
+let recognition = null;
+let isListening = false;
+
+
+function toggleSpeech(text, button) {
+    if (!("speechSynthesis" in window) || !text) return;
+
+    // Resume paused speech
+    if (speechSynthesis.paused && currentSpeechBtn === button) {
+        speechSynthesis.resume();
+        isPausedSpeech = false;
+        button.innerText = "⏸";
+        return;
+    }
+
+    // Pause current speech
+    if (speechSynthesis.speaking && !speechSynthesis.paused && currentSpeechBtn === button) {
+        speechSynthesis.pause();
+        isPausedSpeech = true;
+        button.innerText = "▶";
+        return;
+    }
+
+    // Stop previous speech
+   if (currentSpeechBtn && currentSpeechBtn !== button) {
+    currentSpeechBtn.innerText = "🔊";
+}
+
+        speechSynthesis.cancel();
+
+        currentSpeechBtn = button;
+        currentUtterance = new SpeechSynthesisUtterance(text);
+
+    currentUtterance.rate = 1;
+    currentUtterance.pitch = 1;
+    currentUtterance.volume = 1;
+
+    const voices = speechSynthesis.getVoices();
+    let preferred = null;
+
+    if (selectedVoiceType === "male") {
+        preferred =
+            voices.find(v => v.name.toLowerCase().includes("david")) ||
+            voices.find(v => v.name.toLowerCase().includes("male")) ||
+            voices.find(v => v.lang.startsWith("en"));
+    } else {
+        preferred =
+            voices.find(v => v.name.includes("Google UK English Female")) ||
+            voices.find(v => v.name.includes("Microsoft Zira")) ||
+            voices.find(v => v.name.toLowerCase().includes("female")) ||
+            voices.find(v => v.lang.startsWith("en"));
+    }
+
+    if (preferred) currentUtterance.voice = preferred;
+
+    currentUtterance.onend = () => {
+        if (currentSpeechBtn) currentSpeechBtn.innerText = "🔊";
+        currentSpeechBtn = null;
+        currentUtterance = null;
+        isPausedSpeech = false;
+    };
+
+    button.innerText = "⏸";
+    speechSynthesis.speak(currentUtterance);
+}
 
 function speakText(text) {
     if (!("speechSynthesis" in window) || !text || isMuted) return;
@@ -124,6 +192,62 @@ function speakText(text) {
 
 
 
+function setupSpeechToText() {
+    const micBtn = document.getElementById("micBtn");
+    if (!micBtn) return;
+
+    const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        micBtn.style.display = "none";
+        return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.lang = "en-IN";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+        isListening = true;
+        micBtn.innerText = "🔴";
+    };
+
+    recognition.onend = () => {
+        isListening = false;
+        micBtn.innerText = "🎙";
+    };
+
+    recognition.onresult = (event) => {
+        let transcript = "";
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+        }
+
+        if (msgInput) {
+            msgInput.value = transcript.trim();
+        }
+    };
+
+    recognition.onerror = () => {
+        isListening = false;
+        micBtn.innerText = "🎙";
+    };
+
+    micBtn.addEventListener("click", () => {
+        if (isListening) {
+            recognition.stop();
+        } else {
+            recognition.start();
+        }
+    });
+}
+
+
+
+
 
 function addMessage(content, type, isHtml = false) {
     if (!chatBox) return null;
@@ -147,7 +271,7 @@ function addMessage(content, type, isHtml = false) {
     const replayBtn = document.createElement("button");
     replayBtn.className = "replay-voice-btn";
     replayBtn.innerText = "🔊";
-    replayBtn.onclick = () => speakText(div.innerText);
+    replayBtn.onclick = () => toggleSpeech(div.innerText, replayBtn);
 
     wrapper.appendChild(div);
     wrapper.appendChild(replayBtn);
@@ -186,6 +310,9 @@ function renderHistoryItems(items) {
     items.forEach((item) => {
         const button = document.createElement("button");
         button.className = "history-item";
+        if (activeSessionId === item.id) {
+            button.classList.add("active");
+        }
         button.type = "button";
         button.innerHTML = `
     <div class="history-content">
@@ -193,7 +320,11 @@ function renderHistoryItems(items) {
     </div>
     <button class="delete-chat-btn" data-id="${item.id}">✕</button>
 `;
-        button.querySelector(".history-content").addEventListener("click", () => loadChatSession(item.id));
+       button.querySelector(".history-content").addEventListener("click", () => {
+        document.querySelectorAll(".history-item").forEach(el => el.classList.remove("active"));
+        button.classList.add("active");
+        loadChatSession(item.id);
+    });
 
 button.querySelector(".delete-chat-btn").addEventListener("click", async (e) => {
     e.stopPropagation();
@@ -228,6 +359,9 @@ async function loadChatHistory() {
     renderHistoryItems(data.items || []);
 }
 
+
+
+
 async function loadChatSession(sessionId) {
     activeSessionId = sessionId;
     clearChatView();
@@ -239,15 +373,68 @@ async function loadChatSession(sessionId) {
     let currentUserMessage = null;
 
     messages.forEach((msg) => {
-        addMessage(msg.content, msg.role);
-
         if (msg.role === "user") {
+            addMessage(msg.content, "user");
             currentUserMessage = { message: msg.content, response: "" };
             chatHistory.push(currentUserMessage);
-        } else if (msg.role === "bot" && currentUserMessage) {
-            currentUserMessage.response = msg.content;
+            return;
+        }
+
+        // BOT MESSAGE RESTORE
+        if (msg.role === "bot") {
+    // Pure image restore
+    if (msg.content.startsWith("[IMAGE]||")) {
+        const imageUrl = msg.content.split("||")[1];
+
+        const botDiv = addMessage("", "bot");
+        botDiv.innerHTML = "";
+
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        img.alt = "Generated road safety image";
+        img.style.maxWidth = "100%";
+        botDiv.appendChild(img);
+
+        if (currentUserMessage) {
+            currentUserMessage.response = "[Image Generated]";
             currentUserMessage = null;
         }
+        return;
+    }
+
+    // Scenario restore
+    if (msg.content.includes("||IMG||")) {
+        const [scenarioText, imageUrl] = msg.content.split("||IMG||");
+
+        const botDiv = addMessage("", "bot");
+        botDiv.innerHTML = "";
+
+        const textDiv = document.createElement("div");
+        textDiv.innerText = scenarioText;
+        botDiv.appendChild(textDiv);
+
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        img.alt = "Generated traffic scenario";
+        img.style.maxWidth = "100%";
+        botDiv.appendChild(img);
+
+        if (currentUserMessage) {
+            currentUserMessage.response = scenarioText;
+            currentUserMessage = null;
+        }
+        return;
+    }
+
+    // Normal text restore
+    addMessage(msg.content, "bot");
+
+    if (currentUserMessage) {
+        currentUserMessage.response = msg.content;
+        currentUserMessage = null;
+    }
+}
+        
     });
 }
 
@@ -375,7 +562,7 @@ async function sendMessage() {
             if (data.response && botDiv) {
                 botDiv.innerText = data.response;
                 chatHistory[chatHistory.length - 1].response = data.response;
-                speakText(data.response);
+                // speakText(data.response);
             }
 
             if (data.type === "image" && botDiv) {
@@ -447,9 +634,9 @@ async function sendMessage() {
 
         chatHistory[chatHistory.length - 1].response = fullText;
 
-        if (fullText.trim()) {
-            speakText(fullText);
-        }
+        // if (fullText.trim()) {
+        //     speakText(fullText);
+        // }
 
         if (loginState.logged_in) {
             loadChatHistory().catch(console.error);
@@ -649,11 +836,11 @@ if (msgInput) {
 }
 
 
-
 attachThemeHandlers();
 attachPromptHandlers();
 attachModeHandlers();
 attachPageActions();
+setupSpeechToText();
 syncEmptyState();
 
 initializeAuthUI().catch(console.error);

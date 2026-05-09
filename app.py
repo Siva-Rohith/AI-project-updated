@@ -65,7 +65,7 @@ TRAFFIC_KEYWORDS = [
 
 def detect_intent_gemini(message):
     try:
-        api_key = "AIzaSyDRHklDEsFOajwu0CZJ-jM_wexk7-ZHig4"
+        api_key = "AIzaSyDRHk"
 
         prompt = f"""
         You are an AI intent classifier.
@@ -247,7 +247,6 @@ def delete_chat(session_id):
 
 # 🔥 Chat API
 @app.route("/chat", methods=["POST"])
-
 def chat():
     user_id = session.get("user_id", None)
     data = request.get_json(silent=True) or {}
@@ -255,8 +254,24 @@ def chat():
     message = (data.get("message") or "").strip()
     session_id = data.get("session_id")
     mode = data.get("mode")
+
     if mode == "auto":
         mode = detect_intent_gemini(message)
+
+    if user_id and not session_id:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        title = message[:60] if message else "New Chat"
+
+        cur.execute("""
+            INSERT INTO chat_sessions (user_id, title)
+            VALUES (?, ?)
+        """, (user_id, title))
+
+        session_id = cur.lastrowid
+        conn.commit()
+        conn.close()
 
     if not message:
         return jsonify({
@@ -295,7 +310,7 @@ def chat():
 
                                 User request: {message}
                                 """
-            image_base64 = generate_image(message)
+            # image_base64 = generate_image(message)
             # 🔥 Use faster model here
             scenario_res = requests.post(
                 "http://127.0.0.1:11434/api/generate",
@@ -321,9 +336,9 @@ def chat():
                 """, (session_id, "user", message))
 
                 cur.execute("""
-                    INSERT INTO chat_messages (session_id, role, content)
-                    VALUES (?, ?, ?)
-                """, (session_id, "bot", scenario_text))
+                        INSERT INTO chat_messages (session_id, role, content)
+                        VALUES (?, ?, ?)
+                    """, (session_id, "bot", f"{scenario_text}||IMG||data:image/png;base64,{image_base64}"))
 
                 conn.commit()
                 conn.close()
@@ -365,9 +380,9 @@ def chat():
                 """, (session_id, "user", message))
 
                 cur.execute("""
-                    INSERT INTO chat_messages (session_id, role, content)
-                    VALUES (?, ?, ?)
-                """, (session_id, "bot", "[Image Generated]"))
+                        INSERT INTO chat_messages (session_id, role, content)
+                        VALUES (?, ?, ?)
+                    """, (session_id, "bot", f"[IMAGE]||data:image/png;base64,{image_base64}"))
 
                 conn.commit()
                 conn.close()
@@ -548,30 +563,72 @@ def chat():
 
 # 🖼️ Image generation
 def generate_image(prompt):
-    url = "http://127.0.0.1:7860/sdapi/v1/txt2img"
+    # 1️⃣ Primary: Hugging Face FLUX
+    try:
+        HF_API_KEY = "HF-key"
+        hf_res = requests.post(
+            "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell",
+            headers={"Authorization": f"Bearer {HF_API_KEY}"},
+            json={"inputs": prompt},
+            timeout=45
+        )
 
-    payload = {
-        "prompt": f"""
-        realistic photo, indian roads,
-        {prompt},
-        cinematic lighting, high detail, sharp focus, 4k
-        """,
+        if hf_res.status_code == 200:
+            return base64.b64encode(hf_res.content).decode("utf-8")
+        else:
+            print("HF failed:", hf_res.text)
 
-        "negative_prompt": """
-        blurry, distorted body, extra limbs, bad anatomy,
-        cartoon, low quality, unrealistic, deformed face
-        """,
+    except Exception as e:
+        print("HF Error:", e)
 
-        "steps": 30,
-        "cfg_scale": 7,
-        "width": 512,
-        "height": 720
-    }
+    # 2️⃣ Secondary: Replicate
+    try:
+        REPLICATE_API_TOKEN = "EG: r8_D6d6UyUT77cg"
 
-    response = requests.post(url, json=payload)
-    r = response.json()
-    return r["images"][0]
+        rep_res = requests.post(
+            "https://api.replicate.com/v1/predictions",
+            headers={
+                "Authorization": f"Token {REPLICATE_API_TOKEN}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "version": "black-forest-labs/flux-schnell",
+                "input": {
+                    "prompt": prompt
+                }
+            },
+            timeout=45
+        ).json()
 
+        image_url = rep_res.get("output", [None])[0]
+        if image_url:
+            img = requests.get(image_url, timeout=30)
+            return base64.b64encode(img.content).decode("utf-8")
+
+    except Exception as e:
+        print("Replicate Error:", e)
+
+    # 3️⃣ Final fallback: Local Stable Diffusion
+    try:
+        url = "http://127.0.0.1:7860/sdapi/v1/txt2img"
+
+        payload = {
+            "prompt": f"{prompt}, highly detailed, high quality, realistic, sharp focus",
+            "negative_prompt": "blurry, low quality, distorted, deformed, watermark, text",
+            "steps": 35,
+            "cfg_scale": 8,
+            "width": 768,
+            "height": 768,
+            "sampler_name": "DPM++ 2M Karras"
+        }
+
+        response = requests.post(url, json=payload, timeout=60)
+        r = response.json()
+        return r["images"][0]
+
+    except Exception as e:
+        print("Local SD Error:", e)
+        return None
 
 
 
